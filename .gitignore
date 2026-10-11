@@ -9,3 +9,4 @@ obj/
 OWML/
 *.jfr
 release/
+dist/
