@@ -10,9 +10,10 @@
     <!-- Keep the builder's local folders out of the DLL (the PDB path and source paths). -->
     <Deterministic>true</Deterministic>
     <PathMap>$(MSBuildProjectDirectory)=/_/OWCraft</PathMap>
-    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Outer Wilds</GameDir>
+    <GameDir Condition="'$(GameDir)' == ''">D:\Games\OuterWilds</GameDir>
     <Managed>$(GameDir)\OuterWilds_Data\Managed</Managed>
     <ModsDir Condition="'$(ModsDir)' == ''">$(AppData)\OuterWildsModManager\OWML\Mods\Yaekai.OWCraft</ModsDir>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="OWML" Version="2.16.3" IncludeAssets="compile" />
