@@ -92,8 +92,17 @@ Controls:
   screen. A Harmony prefix on `PauseCommandListener.Update` handles this.
 - **O** opens Minecraft's own menu.
 
+## Multiplayer
+OWCraft supports multiplayer through Minecraft's networking architecture:
+- Multiple players run their own Outer Wilds and Minecraft instances.
+- Guests join the host's Minecraft server (via LAN/e4mc `/join <link>` or a dedicated server).
+- `AnchorGrid` ensures all clients deterministically map the same planet coordinates to the exact same Minecraft coordinates.
+- Custom `SkyNet.Teleport` and `SkyNet.Shift` packets handle server-authoritative relocations and airborne tile transfers without rubberbanding.
+- Remote player avatars and placed blocks are meshed and rendered on each player's planet.
+- Can be combined with **Quantum Space Buddies (QSB)** to see both spaceships in space and Minecraft avatars on planets.
+See [docs/MULTIPLAYER_DESIGN.md](file:///d:/AI/ModdedGaming/OWCraft/docs/MULTIPLAYER_DESIGN.md) for full architecture details.
+
 ## Not done yet
-- Entities and mobs; the player's own model in third person; particles (`RenScene` / `RenAvatar`).
 - Placed blocks are not solid for Outer Wilds itself outside Minecraft mode, so you can walk
   through your house when not in Minecraft mode.
 - Water grid, day/night sync (`GameHour` is fixed at noon), hurt events.

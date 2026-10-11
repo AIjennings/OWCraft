@@ -44,6 +44,21 @@ You need Windows, Outer Wilds (Steam) and Minecraft Java Edition.
 Each patch of planet maps to its own fixed area of the Minecraft world, so whatever you build is
 saved by Minecraft. It is still there after time loops and restarts.
 
+## Playing with friends (Multiplayer)
+OWCraft supports multiplayer! Friends can build together on any planet in the solar system.
+
+1. **Host:**
+   - In Outer Wilds, press **F6** to enter Minecraft mode.
+   - Press **O** to open Minecraft's menu, select **Open to LAN**, then **Start LAN World**.
+   - A shareable link (like `abc-def.e4mc.link`) appears in chat. Copy and send it to your friends.
+2. **Friends:**
+   - In Minecraft mode, press **T** and type `/join abc-def.e4mc.link` (or set `join=abc-def.e4mc.link` in `.minecraft/config/skycraft.properties`).
+   - Fly to the same planet, press **F6**, and build together! Type `/leave` anytime to return to your singleplayer world.
+3. **Full Solar System Co-Op (Spaceships + Astronauts):**
+   - Install **Quantum Space Buddies (QSB)** from the Outer Wilds Mod Manager.
+   - You can fly spaceships together through space and build voxel structures together on planets!
+   - See [docs/MULTIPLAYER_DESIGN.md](docs/MULTIPLAYER_DESIGN.md) for architecture & dedicated server details.
+
 Settings (Mod Manager):
 
 | Setting | Default | What it does |

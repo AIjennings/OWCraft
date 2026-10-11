@@ -240,7 +240,7 @@ index 0000000..97ebe7e
 +	}
 +}
 diff --git a/fabric/src/client/java/dev/skycraft/client/SkyClient.java b/fabric/src/client/java/dev/skycraft/client/SkyClient.java
-index 3127e6e..54704a1 100644
+index 3127e6e..d118fbf 100644
 --- a/fabric/src/client/java/dev/skycraft/client/SkyClient.java
 +++ b/fabric/src/client/java/dev/skycraft/client/SkyClient.java
 @@ -9,6 +9,7 @@ import net.minecraft.client.Camera;
@@ -270,7 +270,7 @@ index 3127e6e..54704a1 100644
  		SkyLink.poll();
  		quitWithSkyrim(Minecraft.getInstance());
  		if (START_HIDDEN && !startedHidden) {
-@@ -129,10 +135,34 @@ public final class SkyClient {
+@@ -129,10 +135,33 @@ public final class SkyClient {
  			teleportPending = true;
  		}
  		if (teleportPending && sky.inGame() && !sky.loading()) {
@@ -278,8 +278,7 @@ index 3127e6e..54704a1 100644
 -			teleportAck = sky.teleportSeq;
  			teleportPending = false;
 -			holdPos = new Vec3(sky.x, sky.y, sky.z);
-+			if (sky.reanchor() && !player.onGround() && holdPos == null && shiftTarget == null
-+				&& minecraft.getSingleplayerServer() != null) {
++			if (sky.reanchor() && !player.onGround() && holdPos == null && shiftTarget == null) {
 +				carryAround(minecraft, player.position(), new Vec3(sky.x, sky.y, sky.z));
 +				shiftPlayer(minecraft, sky.x - player.getX(), sky.y - player.getY(), sky.z - player.getZ());
 +				shiftTarget = new Vec3(sky.x, sky.y, sky.z);
@@ -308,7 +307,7 @@ index 3127e6e..54704a1 100644
  		}
  
  		// Look direction is driven by Skyrim (zero-latency camera); MC uses it for everything else.
-@@ -147,7 +177,7 @@ public final class SkyClient {
+@@ -147,7 +176,7 @@ public final class SkyClient {
  	// Minecraft is started with Skyrim (the SKSE plugin launches it), so it goes when that Skyrim has
  	// closed for good: saved and shut down the normal way. -Dskycraft.quitWithSkyrim=false keeps it
  	// running instead (development: restarting Skyrim without restarting Minecraft).
@@ -317,7 +316,7 @@ index 3127e6e..54704a1 100644
  	private static long skyrimGoneSince;
  	private static long nextSkyrimCheck;
  	// Started hidden by Skyrim but never connected: nobody can see or use this Minecraft, and it
-@@ -183,6 +213,7 @@ public final class SkyClient {
+@@ -183,6 +212,7 @@ public final class SkyClient {
  
  	/** Called at the end of every client tick. */
  	public static void clientTick(Minecraft minecraft) {
@@ -325,7 +324,7 @@ index 3127e6e..54704a1 100644
  		MirrorWorld.tick(minecraft);
  		DiscordPresence.tick(minecraft);
  		SkyDigClient.tick(minecraft);
-@@ -304,6 +335,41 @@ public final class SkyClient {
+@@ -304,6 +334,49 @@ public final class SkyClient {
  		return !Double.isNaN(ground) && ground > pos.y ? new Vec3(pos.x, ground, pos.z) : pos;
  	}
  
@@ -338,13 +337,21 @@ index 3127e6e..54704a1 100644
 +	 */
 +	private static void shiftPlayer(Minecraft minecraft, double dx, double dy, double dz) {
 +		var server = minecraft.getSingleplayerServer();
-+		var uuid = minecraft.player.getUUID();
-+		server.execute(() -> {
-+			ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
-+			if (sp != null) {
-+				sp.teleportTo(sp.level(), dx, dy, dz, Relative.ALL, 0f, 0f, false);
-+			}
-+		});
++		if (server != null) {
++			var uuid = minecraft.player.getUUID();
++			server.execute(() -> {
++				ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
++				if (sp != null) {
++					sp.teleportTo(sp.level(), dx, dy, dz, Relative.ALL, 0f, 0f, false);
++				}
++			});
++		} else {
++			java.util.List<Float> rotList = new java.util.ArrayList<>();
++			for (float f : sky.shiftRot) rotList.add(f);
++			net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
++				new dev.skycraft.net.SkyNet.Shift(dx, dy, dz, rotList)
++			);
++		}
 +		SkyCraft.LOG.info("SkyCraft: tile shift by {} {} {}", String.format("%.1f", dx), String.format("%.1f", dy), String.format("%.1f", dz));
 +	}
 +
@@ -367,7 +374,18 @@ index 3127e6e..54704a1 100644
  	private static void requestTeleport(Minecraft minecraft, double x, double y, double z, float yaw, float pitch) {
  		LocalPlayer player = minecraft.player;
  		player.setPos(x, y, z);
-@@ -356,6 +422,10 @@ public final class SkyClient {
+@@ -321,6 +394,10 @@ public final class SkyClient {
+ 					sp.resetFallDistance();
+ 				}
+ 			});
++		} else {
++			net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
++				new dev.skycraft.net.SkyNet.Teleport(x, y, z, yaw, pitch)
++			);
+ 		}
+ 		SkyCraft.LOG.info("SkyCraft: teleported to {} {} {}", x, y, z);
+ 	}
+@@ -356,6 +433,10 @@ public final class SkyClient {
  			if (player.getAbilities().flying) {
  				flags |= Proto.MC_FLYING;
  			}
@@ -378,7 +396,7 @@ index 3127e6e..54704a1 100644
  			mc.x = feet.x;
  			mc.y = feet.y;
  			mc.z = feet.z;
-@@ -395,7 +465,9 @@ public final class SkyClient {
+@@ -395,7 +476,9 @@ public final class SkyClient {
  					SkyCraft.LOG.error("SkyCraft: world export failed", e);
  				}
  			}
@@ -388,7 +406,7 @@ index 3127e6e..54704a1 100644
  		}
  	}
  
-@@ -408,6 +480,7 @@ public final class SkyClient {
+@@ -408,6 +491,7 @@ public final class SkyClient {
  			return; // Skyrim is paused (menu / alt-tab): don't block every frame waiting for it
  		}
  		skyrimStalled = false;
@@ -396,7 +414,7 @@ index 3127e6e..54704a1 100644
  		long deadline = System.nanoTime() + 25_000_000L;
  		// SkyState.seq advances by 2 per Skyrim frame (odd while writing).
  		while ((SkyLink.skyStateSeq() >>> 1) == lastPacedSeq && System.nanoTime() < deadline) {
-@@ -419,6 +492,7 @@ public final class SkyClient {
+@@ -419,6 +503,7 @@ public final class SkyClient {
  		int seqNow = SkyLink.skyStateSeq() >>> 1;
  		skyrimStalled = seqNow == lastPacedSeq;
  		lastPacedSeq = seqNow;
@@ -577,6 +595,20 @@ index 6b9b166..787057e 100644
  			VarHandle.loadLoadFence();
  			int seq2 = (int) INT.getAcquire(s, b + SS_SEQ);
  			if (seq1 == seq2) {
+diff --git a/fabric/src/main/java/dev/skycraft/mixin/MinecraftServerFlightMixin.java b/fabric/src/main/java/dev/skycraft/mixin/MinecraftServerFlightMixin.java
+index 8eb267c..4d684bb 100644
+--- a/fabric/src/main/java/dev/skycraft/mixin/MinecraftServerFlightMixin.java
++++ b/fabric/src/main/java/dev/skycraft/mixin/MinecraftServerFlightMixin.java
+@@ -15,8 +15,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+ public abstract class MinecraftServerFlightMixin {
+ 	@Inject(method = "allowFlight", at = @At("HEAD"), cancellable = true)
+ 	private void skycraft$guestsStandOnTheirSkyrim(CallbackInfoReturnable<Boolean> cir) {
+-		if (SkyLink.active()) {
+-			cir.setReturnValue(true);
+-		}
++		cir.setReturnValue(true);
+ 	}
+ }
 diff --git a/fabric/src/main/java/dev/skycraft/mixin/PathfindingContextMixin.java b/fabric/src/main/java/dev/skycraft/mixin/PathfindingContextMixin.java
 new file mode 100644
 index 0000000..e331424
@@ -619,6 +651,87 @@ index 0000000..e331424
 +		}
 +	}
 +}
+diff --git a/fabric/src/main/java/dev/skycraft/net/SkyNet.java b/fabric/src/main/java/dev/skycraft/net/SkyNet.java
+index 1e79459..f79e2df 100644
+--- a/fabric/src/main/java/dev/skycraft/net/SkyNet.java
++++ b/fabric/src/main/java/dev/skycraft/net/SkyNet.java
+@@ -83,10 +83,47 @@ public final class SkyNet {
+ 		}
+ 	}
+ 
++	/** Client -> server: teleport the player to anchor / planet coordinates. */
++	public record Teleport(double x, double y, double z, float yaw, float pitch) implements CustomPacketPayload {
++		public static final Type<Teleport> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SkyCraft.MOD_ID, "teleport"));
++		public static final StreamCodec<RegistryFriendlyByteBuf, Teleport> CODEC = StreamCodec.composite(
++			ByteBufCodecs.DOUBLE, Teleport::x,
++			ByteBufCodecs.DOUBLE, Teleport::y,
++			ByteBufCodecs.DOUBLE, Teleport::z,
++			ByteBufCodecs.FLOAT, Teleport::yaw,
++			ByteBufCodecs.FLOAT, Teleport::pitch,
++			Teleport::new
++		);
++
++		@Override
++		public Type<? extends CustomPacketPayload> type() {
++			return TYPE;
++		}
++	}
++
++	/** Client -> server: tile shift while airborne (relocates player and carries nearby entities). */
++	public record Shift(double dx, double dy, double dz, List<Float> rot) implements CustomPacketPayload {
++		public static final Type<Shift> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SkyCraft.MOD_ID, "shift"));
++		public static final StreamCodec<RegistryFriendlyByteBuf, Shift> CODEC = StreamCodec.composite(
++			ByteBufCodecs.DOUBLE, Shift::dx,
++			ByteBufCodecs.DOUBLE, Shift::dy,
++			ByteBufCodecs.DOUBLE, Shift::dz,
++			ByteBufCodecs.FLOAT.apply(ByteBufCodecs.list(9)), Shift::rot,
++			Shift::new
++		);
++
++		@Override
++		public Type<? extends CustomPacketPayload> type() {
++			return TYPE;
++		}
++	}
++
+ 	public static void init() {
+ 		PayloadTypeRegistry.serverboundPlay().register(Hurt.TYPE, Hurt.CODEC);
+ 		PayloadTypeRegistry.serverboundPlay().register(DigOpen.TYPE, DigOpen.CODEC);
+ 		PayloadTypeRegistry.serverboundPlay().register(DigReveal.TYPE, DigReveal.CODEC);
++		PayloadTypeRegistry.serverboundPlay().register(Teleport.TYPE, Teleport.CODEC);
++		PayloadTypeRegistry.serverboundPlay().register(Shift.TYPE, Shift.CODEC);
+ 		ServerPlayNetworking.registerGlobalReceiver(DigOpen.TYPE, (payload, context) -> {
+ 			ServerPlayer player = context.player();
+ 			context.server().execute(() -> SkyDig.open(player, payload.world(), payload.pos(), payload.material()));
+@@ -103,6 +140,28 @@ public final class SkyNet {
+ 			float damage = Math.max(0.0F, Math.min(payload.skyrimDamage(), 10000.0F));
+ 			context.server().execute(() -> SkyCombat.hurtPlayer(player, payload.kind(), damage, payload.attackerFormId(), payload.flags()));
+ 		});
++		ServerPlayNetworking.registerGlobalReceiver(Teleport.TYPE, (payload, context) -> {
++			ServerPlayer player = context.player();
++			context.server().execute(() -> {
++				player.teleportTo(payload.x(), payload.y(), payload.z());
++				player.setYRot(payload.yaw());
++				player.setXRot(payload.pitch());
++				player.resetFallDistance();
++				SkyCraft.LOG.info("SkyCraft: remote player {} teleported to {} {} {}", player.getName().getString(), payload.x(), payload.y(), payload.z());
++			});
++		});
++		ServerPlayNetworking.registerGlobalReceiver(Shift.TYPE, (payload, context) -> {
++			ServerPlayer player = context.player();
++			context.server().execute(() -> {
++				net.minecraft.world.phys.Vec3 from = player.position();
++				player.teleportTo(player.level(), payload.dx(), payload.dy(), payload.dz(), net.minecraft.world.entity.Relative.ALL, 0f, 0f, false);
++				net.minecraft.world.phys.Vec3 to = player.position();
++				float[] rot = new float[payload.rot().size()];
++				for (int i = 0; i < rot.length; i++) rot[i] = payload.rot().get(i);
++				dev.skycraft.world.TileCarry.carry(player.level(), from, to, rot);
++				SkyCraft.LOG.info("SkyCraft: remote player {} shifted by {} {} {}", player.getName().getString(), payload.dx(), payload.dy(), payload.dz());
++			});
++		});
+ 	}
+ 
+ 	/** True if this player plays on this machine (their Skyrim is on the shared-memory link). */
 diff --git a/fabric/src/main/java/dev/skycraft/world/TileCarry.java b/fabric/src/main/java/dev/skycraft/world/TileCarry.java
 new file mode 100644
 index 0000000..e715cca
